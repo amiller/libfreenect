@@ -88,6 +88,8 @@ double fps = 0;
 double last_depth = 0.;
 double last_rgb = 0.;
 
+int decimation = 0;
+
 char *out_dir=0;
 uint32_t last_timestamp = 0;
 FILE *index_fp = NULL;
@@ -362,9 +364,9 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	  dump('d', timestamp, depth, freenect_get_current_depth_mode(dev).bytes);
 
 	double cur_time = get_time();
-	if (cur_time - last_depth < 0.04) { 
-	  //printf("drop depth\n"); 
-	  //return;
+	if (decimation && (cur_time - last_depth < (decimation+1.)/30.)) { 
+            //printf("drop depth\n"); 
+	  return;
 	} // Aim for 25fps
 	last_depth = cur_time;
 
@@ -423,9 +425,9 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
 	double cur_time = get_time();
-	if (cur_time - last_rgb < 0.04) { 
+	if (decimation && (cur_time - last_depth < (decimation+1.)/30.)) {
 	  //printf("drop rgb\n"); 
-	  //return; 
+	  return; 
 	} // Aim for 25fps
 	last_rgb = cur_time;
 
@@ -516,8 +518,10 @@ int main(int argc, char **argv)
 	while (c < argc) {
 	  if (strcmp(argv[c],"-h")==0)
 			usage();
-		else
-			out_dir = argv[c];
+          else if (c == 1)
+              out_dir = argv[c];
+          else if (c == 2)
+              decimation = atoi(argv[c]);
 		c++;
 	}
 
