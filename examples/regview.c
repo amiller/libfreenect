@@ -388,6 +388,13 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 	pthread_mutex_unlock(&gl_backbuf_mutex);
 }
 
+void signal_cleanup(int num)
+{
+    die = 1;
+    printf("Caught signal, cleaning up\n");
+    signal(SIGINT, signal_cleanup);
+}
+
 void *freenect_threadfunc(void *arg)
 {
 	freenect_set_depth_callback(f_dev, depth_cb);
@@ -479,6 +486,7 @@ int main(int argc, char **argv)
 	  }
 	}
 
+	signal(SIGINT, signal_cleanup);
 
 	freenect_set_log_level(f_ctx, FREENECT_LOG_ERROR);
 	freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_CAMERA));
