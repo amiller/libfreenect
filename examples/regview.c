@@ -202,7 +202,7 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 	}
 	double fin_time = get_time();
         double elapsed = (fin_time - cur_time)*1000.;
-        if (elapsed > 0.05) {
+        if (elapsed > 50) {
             printf("[%c] %.2lf ms \n", type, elapsed);
         }
 }
