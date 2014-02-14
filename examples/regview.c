@@ -425,7 +425,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
 	double cur_time = get_time();
-	if (decimation && (cur_time - last_depth < (decimation+1.)/30.)) {
+	if (decimation && (cur_time - last_rgb < (decimation+1.)/30.)) {
 	  //printf("drop rgb\n"); 
 	  return; 
 	} // Aim for 25fps
