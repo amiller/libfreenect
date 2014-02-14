@@ -44,6 +44,8 @@
 #endif
 
 #include <math.h>
+#include <stdlib.h>
+#include <sys/stat.h>
 
 pthread_t freenect_thread;
 volatile int die = 0;
@@ -76,6 +78,90 @@ int got_depth = 0;
 int frame = 0;
 int ftime = 0;
 double fps = 0;
+
+char *out_dir=0;
+uint32_t last_timestamp = 0;
+FILE *index_fp = NULL;
+
+#define FREENECT_FRAME_W 640
+#define FREENECT_FRAME_H 480
+
+double get_time()
+{
+	struct timeval cur;
+	gettimeofday(&cur, NULL);
+	return cur.tv_sec + cur.tv_usec / 1000000.;
+}
+
+void dump_depth(FILE *fp, void *data, int data_size)
+{
+	fprintf(fp, "P5 %d %d 65535\n", FREENECT_FRAME_W, FREENECT_FRAME_H);
+	fwrite(data, data_size, 1, fp);
+}
+
+void dump_rgb(FILE *fp, void *data, int data_size)
+{
+	fprintf(fp, "P6 %d %d 255\n", FREENECT_FRAME_W, FREENECT_FRAME_H);
+	fwrite(data, data_size, 1, fp);
+}
+
+FILE *open_dump(char type, double cur_time, uint32_t timestamp, int data_size, const char *extension)
+{
+	char *fn = malloc(strlen(out_dir) + 50);
+	sprintf(fn, "%c-%f-%u.%s", type, cur_time, timestamp, extension);
+	fprintf(index_fp, "%s\n", fn);
+	sprintf(fn, "%s/%c-%f-%u.%s", out_dir, type, cur_time, timestamp, extension);
+	FILE* fp = fopen(fn, "wb");
+	if (!fp) {
+		printf("Error: Cannot open file [%s]\n", fn);
+		exit(1);
+	}
+	//printf("%s\n", fn);
+	free(fn);
+	return fp;
+}
+
+FILE *open_index(const char *fn)
+{
+    FILE *fp = fopen(fn, "r");
+    if (fp) {
+        fclose(fp);
+        printf("Error: Index already exists, to avoid overwriting "
+               "use a different directory.\n");
+        return 0;
+    }
+    fp = fopen(fn, "wb");
+    if (!fp) {
+        printf("Error: Cannot open file [%s]\n", fn);
+        return 0;
+    }
+    return fp;
+}
+
+void dump(char type, uint32_t timestamp, void *data, int data_size)
+{
+	// timestamp can be at most 10 characters, we have a few extra
+	double cur_time = get_time();
+	FILE *fp;
+	last_timestamp = timestamp;
+	switch (type) {
+		case 'd':
+			fp = open_dump(type, cur_time, timestamp, data_size, "pgm");
+			dump_depth(fp, data, data_size);
+			fclose(fp);
+			break;
+		case 'r':
+			fp = open_dump(type, cur_time, timestamp, data_size, "ppm");
+			dump_rgb(fp, data, data_size);
+			fclose(fp);
+			break;
+		case 'a':
+			fp = open_dump(type, cur_time, timestamp, data_size, "dump");
+			fwrite(data, data_size, 1, fp);
+			fclose(fp);
+			break;
+	}
+}
 
 void idle()
 {
@@ -228,6 +314,10 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	int i;
 	uint16_t *depth = (uint16_t*)v_depth;
 
+	if (out_dir)
+	  dump('d', timestamp, depth, freenect_get_current_depth_mode(dev).bytes);
+
+
 	pthread_mutex_lock(&gl_backbuf_mutex);
 	for (i=0; i<640*480; i++) {
 		//if (depth[i] >= 2048) continue;
@@ -289,6 +379,10 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 	freenect_set_video_buffer(dev, rgb_back);
 	rgb_mid = (uint8_t*)rgb;
 
+	if (out_dir)
+	  dump('r', timestamp, rgb_mid, freenect_get_current_video_mode(dev).bytes);
+
+
 	got_rgb++;
 	pthread_cond_signal(&gl_frame_cond);
 	pthread_mutex_unlock(&gl_backbuf_mutex);
@@ -326,6 +420,14 @@ void *freenect_threadfunc(void *arg)
 	return NULL;
 }
 
+void usage()
+{
+	printf("Records the Kinect sensor data to a directory\nResult can be used as input to Fakenect\nUsage:\n");
+	printf("  record [-h] [-ffmpeg] [-ffmpeg-opts <options>] "
+		   "<target basename>\n");
+	exit(0);
+}
+
 int main(int argc, char **argv)
 {
 	int res;
@@ -344,6 +446,18 @@ int main(int argc, char **argv)
 		v = powf(v, 3)* 6;
 		t_gamma[i] = v*6*256;
 	}
+f
+	int c=1;
+	while (c < argc) {
+	  if (strcmp(argv[c],"-h")==0)
+			usage();
+		else
+			out_dir = argv[c];
+		c++;
+	}
+
+	//if (!out_dir)
+	//	usage();
 
 	g_argc = argc;
 	g_argv = argv;
@@ -353,15 +467,26 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	freenect_set_log_level(f_ctx, FREENECT_LOG_DEBUG);
+	if (out_dir) {
+	  mkdir(out_dir, S_IRWXU | S_IRWXG | S_IRWXO);
+	  char *fn = malloc(strlen(out_dir) + 50);
+	  sprintf(fn, "%s/INDEX.txt", out_dir);
+	  index_fp = open_index(fn);
+	  free(fn);
+	  if (!index_fp) {
+	    fclose(index_fp);
+	    return 1;
+	  }
+	}
+
+
+	freenect_set_log_level(f_ctx, FREENECT_LOG_ERROR);
 	freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_CAMERA));
 
 	int nr_devices = freenect_num_devices (f_ctx);
 	printf ("Number of devices found: %d\n", nr_devices);
 
 	int user_device_number = 0;
-	if (argc > 1)
-		user_device_number = atoi(argv[1]);
 
 	if (nr_devices < 1) {
 		freenect_shutdown(f_ctx);
