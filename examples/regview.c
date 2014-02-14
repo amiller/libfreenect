@@ -168,7 +168,7 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 	IplImage* img;
 	char *fn;
 	snappy_status s;
-	size_t compressed_size;
+	size_t compressed_size = snappy_size;
 	switch (type) {
 		case 'd':
 		  fp = open_dump(type, cur_time, timestamp, data_size, "snappy");
@@ -202,10 +202,9 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 	}
 	double fin_time = get_time();
         double elapsed = (fin_time - cur_time)*1000.;
-        printf("[%c] %.2lf ms \n", type, (fin_time - cur_time) * 1000.);
-        //if (elapsed > 50) {
-        //    printf("[%c] %.2lf ms \n", type, elapsed);
-        //}
+        if (elapsed > 50) {
+            printf("[%c] %.2lf ms \n", type, elapsed);
+        }
 }
 
 void idle()
@@ -570,9 +569,9 @@ int main(int argc, char **argv)
 	}
 
         if (out_dir) {
-            //printf("Recording to disk, skip OpenGL entirely\n");
-            //freenect_threadfunc(NULL);
-            //return 0;
+            printf("Recording to disk, skip OpenGL entirely\n");
+            freenect_threadfunc(NULL);
+            return 0;
         }
 	res = pthread_create(&freenect_thread, NULL, freenect_threadfunc, NULL);
 	if (res) {
