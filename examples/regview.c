@@ -171,8 +171,7 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 	size_t compressed_size;
 	switch (type) {
 		case 'd':
-		  
-		  fp = open_dump(type, cur_time, timestamp, data_size, "dump");
+		  fp = open_dump(type, cur_time, timestamp, data_size, "snappy");
 		  s = snappy_compress(data, data_size, snappy_buffer, &compressed_size);
 		  if (s != SNAPPY_OK) {
 		    printf("ERROR snappy failed!\n");
@@ -362,7 +361,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	double cur_time = get_time();
 	if (cur_time - last_depth < 0.04) { 
 	  //printf("drop depth\n"); 
-	  return;
+	  //return;
 	} // Aim for 25fps
 	last_depth = cur_time;
 
@@ -423,7 +422,7 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 	double cur_time = get_time();
 	if (cur_time - last_rgb < 0.04) { 
 	  //printf("drop rgb\n"); 
-	  return; 
+	  //return; 
 	} // Aim for 25fps
 	last_rgb = cur_time;
 
