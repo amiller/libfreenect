@@ -174,9 +174,9 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 		  fp = open_dump(type, cur_time, timestamp, data_size, "snappy");
 		  s = snappy_compress(data, data_size, snappy_buffer, &compressed_size);
 		  if (s != SNAPPY_OK) {
-		    printf("ERROR snappy failed!\n");
-		    return;
-		  } else if (s == SNAPPY
+                      printf("ERROR %d snappy failed!\n", s);
+                      return;
+		  } 
 		  fwrite(snappy_buffer, compressed_size, 1, fp);
 		  //dump_depth(fp, data, data_size);
 		  fclose(fp);
