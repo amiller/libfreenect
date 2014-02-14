@@ -446,7 +446,7 @@ int main(int argc, char **argv)
 		v = powf(v, 3)* 6;
 		t_gamma[i] = v*6*256;
 	}
-f
+
 	int c=1;
 	while (c < argc) {
 	  if (strcmp(argv[c],"-h")==0)
