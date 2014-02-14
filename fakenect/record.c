@@ -178,7 +178,7 @@ void depth_cb_ffmpeg(freenect_device *dev, void *depth, uint32_t timestamp)
 
 	dump_ffmpeg_pad16(depth_stream, timestamp, depth,
                       freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM,
-                                               FREENECT_DEPTH_11BIT).bytes);
+                                               FREENECT_DEPTH_REGISTERED).bytes);
 }
 
 void rgb_cb_ffmpeg(freenect_device *dev, void *rgb, uint32_t timestamp)
@@ -223,9 +223,9 @@ void init()
 		printf("Error: Cannot get device\n");
 		return;
 	}
-	print_mode("Depth", freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT));
+	print_mode("Depth", freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_REGISTERED));
 	print_mode("Video", freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB));
-	freenect_set_depth_mode(dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT));
+	freenect_set_depth_mode(dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_REGISTERED));
 	freenect_start_depth(dev);
 	freenect_set_video_mode(dev, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB));
 	freenect_start_video(dev);
