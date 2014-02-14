@@ -19,7 +19,10 @@ if (WIN32)
 endif()
 
 add_executable(glview glview.c)
+
+find_package(OpenCV REQUIRED)
 add_executable(regview regview.c)
+
 add_executable(hiview hiview.c)
 add_executable(chunkview chunkview.c)
 if(BUILD_AUDIO)
@@ -58,11 +61,12 @@ else()
   find_package(Threads REQUIRED)
   find_package(OpenGL REQUIRED)
   find_package(GLUT REQUIRED)
+  find_package(Snappy REQUIRED)
 
   include_directories(${OPENGL_INCLUDE_DIR} ${GLUT_INCLUDE_DIR} ${USB_INCLUDE_DIRS})
 
   target_link_libraries(glview freenect ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
-  target_link_libraries(regview freenect ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
+  target_link_libraries(regview freenect ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB} ${OpenCV_LIBS} ${SNAPPY_LIBS})
   target_link_libraries(hiview freenect ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
   target_link_libraries(chunkview freenect ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
   if (BUILD_AUDIO)

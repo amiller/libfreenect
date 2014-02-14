@@ -48,6 +48,12 @@
 #include <sys/stat.h>
 #include <signal.h>
 
+#include <opencv2/highgui/highgui_c.h>
+#include <opencv2/core/core_c.h>
+
+#include <snappy-c.h>
+
+
 pthread_t freenect_thread;
 volatile sig_atomic_t die = 0;
 
@@ -79,10 +85,15 @@ int got_depth = 0;
 int frame = 0;
 int ftime = 0;
 double fps = 0;
+double last_depth = 0.;
+double last_rgb = 0.;
 
 char *out_dir=0;
 uint32_t last_timestamp = 0;
 FILE *index_fp = NULL;
+
+char *snappy_buffer = NULL;
+size_t snappy_size = 0;
 
 #define FREENECT_FRAME_W 640
 #define FREENECT_FRAME_H 480
@@ -139,29 +150,59 @@ FILE *open_index(const char *fn)
     return fp;
 }
 
+char *alloc_fn(char type, double cur_time, uint32_t timestamp, int data_size, const char *extension) {
+	char *fn = malloc(strlen(out_dir) + 50);
+	sprintf(fn, "%c-%f-%u.%s", type, cur_time, timestamp, extension);
+	fprintf(index_fp, "%s\n", fn);
+	sprintf(fn, "%s/%c-%f-%u.%s", out_dir, type, cur_time, timestamp, extension);
+	return fn;
+}
+
+
 void dump(char type, uint32_t timestamp, void *data, int data_size)
 {
 	// timestamp can be at most 10 characters, we have a few extra
 	double cur_time = get_time();
 	FILE *fp;
 	last_timestamp = timestamp;
+	IplImage* img;
+	char *fn;
+	snappy_status s;
+	size_t compressed_size;
 	switch (type) {
 		case 'd':
-			fp = open_dump(type, cur_time, timestamp, data_size, "pgm");
-			dump_depth(fp, data, data_size);
-			fclose(fp);
+		  
+		  fp = open_dump(type, cur_time, timestamp, data_size, "dump");
+		  s = snappy_compress(data, data_size, snappy_buffer, &compressed_size);
+		  if (s != SNAPPY_OK) {
+		    printf("ERROR snappy failed!\n");
+		    return;
+		  };
+		  fwrite(snappy_buffer, compressed_size, 1, fp);
+		  //dump_depth(fp, data, data_size);
+		  fclose(fp);
 			break;
 		case 'r':
-			fp = open_dump(type, cur_time, timestamp, data_size, "ppm");
-			dump_rgb(fp, data, data_size);
-			fclose(fp);
+		  fn = alloc_fn(type, cur_time, timestamp, data_size, "jpg");
+		  img = (IplImage *) cvCreateImageHeader(cvSize(640,480), IPL_DEPTH_8U, 3);
+		  cvSetData(img, data, 640*3);
+		  cvSaveImage(fn, img, 0);
+		  cvReleaseImageHeader(&img);
+		  free(fn);
+
+		  //fp = open_dump(type, cur_time, timestamp, data_size, "ppm");
+		  //	dump_rgb(fp, data, data_size);
+		  //	fclose(fp);
 			break;
 		case 'a':
+		  break; // skip accel for now
 			fp = open_dump(type, cur_time, timestamp, data_size, "dump");
 			fwrite(data, data_size, 1, fp);
 			fclose(fp);
 			break;
 	}
+	double fin_time = get_time();
+	printf("[%c] %.2lf ms \n", type, (fin_time - cur_time) * 1000.);
 }
 
 void idle()
@@ -318,6 +359,13 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	if (out_dir)
 	  dump('d', timestamp, depth, freenect_get_current_depth_mode(dev).bytes);
 
+	double cur_time = get_time();
+	if (cur_time - last_depth < 0.04) { 
+	  //printf("drop depth\n"); 
+	  return;
+	} // Aim for 25fps
+	last_depth = cur_time;
+
 
 	pthread_mutex_lock(&gl_backbuf_mutex);
 	for (i=0; i<640*480; i++) {
@@ -372,6 +420,13 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
+	double cur_time = get_time();
+	if (cur_time - last_rgb < 0.04) { 
+	  //printf("drop rgb\n"); 
+	  return; 
+	} // Aim for 25fps
+	last_rgb = cur_time;
+
 	pthread_mutex_lock(&gl_backbuf_mutex);
 
 	// swap buffers
@@ -488,6 +543,9 @@ int main(int argc, char **argv)
 	}
 
 	//signal(SIGINT, signal_cleanup);
+
+	snappy_size = snappy_max_compressed_length(640*480*2);
+	snappy_buffer = (char *) malloc(snappy_size);
 
 	freenect_set_log_level(f_ctx, FREENECT_LOG_ERROR);
 	freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_CAMERA));
