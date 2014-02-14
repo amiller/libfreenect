@@ -46,6 +46,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 pthread_t freenect_thread;
 volatile int die = 0;
