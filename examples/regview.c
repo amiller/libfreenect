@@ -49,7 +49,7 @@
 #include <signal.h>
 
 pthread_t freenect_thread;
-volatile int die = 0;
+volatile sig_atomic_t die = 0;
 
 int g_argc;
 char **g_argv;
@@ -391,8 +391,8 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
 void signal_cleanup(int num)
 {
-    die = 1;
     printf("Caught signal, cleaning up\n");
+    keyPressed('q',0,0);
     signal(SIGINT, signal_cleanup);
 }
 
@@ -487,7 +487,7 @@ int main(int argc, char **argv)
 	  }
 	}
 
-	signal(SIGINT, signal_cleanup);
+	//signal(SIGINT, signal_cleanup);
 
 	freenect_set_log_level(f_ctx, FREENECT_LOG_ERROR);
 	freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_CAMERA));
