@@ -176,7 +176,7 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 		  if (s != SNAPPY_OK) {
 		    printf("ERROR snappy failed!\n");
 		    return;
-		  };
+		  } else if (s == SNAPPY
 		  fwrite(snappy_buffer, compressed_size, 1, fp);
 		  //dump_depth(fp, data, data_size);
 		  fclose(fp);
@@ -202,9 +202,10 @@ void dump(char type, uint32_t timestamp, void *data, int data_size)
 	}
 	double fin_time = get_time();
         double elapsed = (fin_time - cur_time)*1000.;
-        if (elapsed > 50) {
-            printf("[%c] %.2lf ms \n", type, elapsed);
-        }
+        printf("[%c] %.2lf ms \n", type, (fin_time - cur_time) * 1000.);
+        //if (elapsed > 50) {
+        //    printf("[%c] %.2lf ms \n", type, elapsed);
+        //}
 }
 
 void idle()
