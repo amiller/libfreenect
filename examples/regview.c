@@ -360,9 +360,6 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	int i;
 	uint16_t *depth = (uint16_t*)v_depth;
 
-	if (out_dir)
-	  dump('d', timestamp, depth, freenect_get_current_depth_mode(dev).bytes);
-
 	double cur_time = get_time();
 	if (decimation && (cur_time - last_depth < (decimation+1.)/30.)) { 
             //printf("drop depth\n"); 
@@ -370,6 +367,8 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	} // Aim for 25fps
 	last_depth = cur_time;
 
+	if (out_dir)
+	  dump('d', timestamp, depth, freenect_get_current_depth_mode(dev).bytes);
 
 	pthread_mutex_lock(&gl_backbuf_mutex);
 	for (i=0; i<640*480; i++) {
