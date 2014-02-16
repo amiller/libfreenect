@@ -571,7 +571,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-        if (out_dir && !decimate) {
+        if (out_dir && !decimation) {
             printf("Recording to disk, skip OpenGL entirely\n");
             freenect_threadfunc(NULL);
             return 0;
