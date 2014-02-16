@@ -571,10 +571,10 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-        if (out_dir) {
-            //printf("Recording to disk, skip OpenGL entirely\n");
-            //freenect_threadfunc(NULL);
-            //return 0;
+        if (out_dir && !decimate) {
+            printf("Recording to disk, skip OpenGL entirely\n");
+            freenect_threadfunc(NULL);
+            return 0;
         }
 	res = pthread_create(&freenect_thread, NULL, freenect_threadfunc, NULL);
 	if (res) {
